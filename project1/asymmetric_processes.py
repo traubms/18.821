@@ -1,3 +1,16 @@
+"""
+asymmetric_processes.py
+Description: contains classes for easily performing simulations and
+calculations about the behavior of asymmetric random processes for
+18.821 Project #1. 
+Includes:
+    AsymmetricProcess
+    CirculalrProcess
+    BoundaryProcess
+    State
+    ncr
+"""
+
 import numpy as np 
 from scipy.ndimage.interpolation import shift
 import scipy.sparse as sparse
@@ -60,8 +73,8 @@ class AsymmetricProcess(object):
         """
         if initial is None:
             initial = self.random_state()
-        elif not isinstance(initial, State):
-            initial = State(initial)
+        else:
+            initial = self.castToState(initial)
 
         result = np.zeros((T, self.N))
         result[0, :] = initial.values
@@ -105,6 +118,19 @@ class AsymmetricProcess(object):
                 j = self.state_index(r)
                 T[j, i] = t[r]
         return S, T
+
+    def castToState(self, state):
+        """
+        Double checks that it is state object of correct length
+        """
+        if not isinstance(state, State):
+            s = State(state)
+        else:
+            s = state
+        if len(state) != self.N:
+            raise ValueError("Input state is not length %s: %s" % (self.N, state))
+        return s
+
 
 class CircleProcess(AsymmetricProcess):
     """
@@ -151,6 +177,7 @@ class CircleProcess(AsymmetricProcess):
         Given a state, returns dictionary of all transitions like
         {str(new_state) : Pr[new_state @ t+1 | state @ t], ...}
         """
+        state = self.castToState(state)
         open_r = state.open_spots_to_right()
         open_l = state.open_spots_to_left()
         transitions = dict()
@@ -172,6 +199,8 @@ class CircleProcess(AsymmetricProcess):
         Given a state string, e.g.  "0010011", maps it to an integer.
         Don't worry about the math.
         """
+        if not isinstance(state_str, str): #just in case State object given
+            state_str = str(self.castToState(state_str))
         N = len(state_str)
         k = 0
         for c in state_str: # Count 1s
@@ -277,6 +306,8 @@ class BoundaryProcess(AsymmetricProcess):
         Given a state string, e.g.  "0010011", maps it to an integer
         Maps it to the binary -> decimal mapping
         """
+        if not isinstance(state_str, str): #just in case State object given
+            state_str = str(self.castToState(state_str))
         index = 0
         for i in range(len(state_str)):
             l = state_str[-(i+1)]
@@ -459,6 +490,9 @@ class State:
 
     def __str__(self):
         return repr(self)
+
+    def __len__(self):
+        return len(self.values)
 
 def ncr(n, r):
     """
