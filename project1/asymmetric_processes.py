@@ -1,9 +1,4 @@
-# -*- coding: utf-8 -*-
 """
-Created on Sat Feb 18 16:26:10 2017
-
-@author: steele94
-
 asymmetric_processes.py
 Description: contains classes for easily performing simulations and
 calculations about the behavior of asymmetric random processes for
@@ -110,19 +105,27 @@ class AsymmetricProcess(object):
         Outputs:
             S: N x M state matrix
             T: M x M transition matrix
+            V: M x M transition matrix weighted by transition "speeds" (+1 move right, -1 move left)
         """
         states = self.enum_states()
         M = len(states)
-        transitions = [(s, self.transitions(State(s))) for s in states]
-        T = sparse.csr_matrix((M, M))
+        transitions_speeds = [(s, self.transitions(State(s)), self.speeds(State(s))) for s in states]
         S = np.zeros((self.N, M))
-        for s, t in transitions:
+        T = sparse.csr_matrix((M, M))
+        V = sparse.csr_matrix((M, M))
+        
+        k = 0
+        for s, t, v in transitions_speeds:
             i = self.state_index(s)
             S[:, i] = State(s).values
             for r in t:
                 j = self.state_index(r)
                 T[j, i] = t[r]
-        return S, T
+                if r in v:
+                    V[j, i] = v[r]
+                k += 1
+        V = T.multiply(V) # speed weighted by probabilities
+        return S, T, V
 
     def castToState(self, state):
         """
@@ -198,6 +201,24 @@ class CircleProcess(AsymmetricProcess):
         transitions[str(state)] = 1. - (1. + self.q) / self.N * len(open_r)
         return transitions
 
+    def speeds(self, state):
+        """
+        Given a state, returns dictionary of all transitions like
+        {str(new_state) : Speed of going from state to new_state (either +1, 0, -1), ...}
+        """
+        state = self.castToState(state)
+        open_r = state.open_spots_to_right()
+        open_l = state.open_spots_to_left()
+        speeds = dict()
+        for new in open_r:
+            speeds[str(state.move_right(new))] = 1.
+        if self.q > 0:
+            for new in open_l:
+                new_state = str(state.move_left(new))
+                speeds[new_state] = -1.
+        speeds[str(state)] = 0
+        return speeds
+
 
     def state_index(self, state_str):
         """
@@ -241,17 +262,17 @@ class CircleProcess(AsymmetricProcess):
             self.memo[(N, k)] = results
             return results
 
-    def speeds(self, sim):
-        """
-        Given a simulation, calculates if each at each step some particle
-        moved left (-1), right (+1) or no change (0)
-        Inputs: T x N simulation matrix (from run_sim)
-        Outputs: (T-1) vector of speeds
-        """
-        N = sim.shape[1]
-        com = np.dot(sim , np.array(range(N))) / N
-        speeds = (((com - np.roll(com, 1))[1:] + .5) % 1 - .5)
-        return speeds * N
+    # def speeds(self, sim):
+    #     """
+    #     Given a simulation, calculates if each at each step some particle
+    #     moved left (-1), right (+1) or no change (0)
+    #     Inputs: T x N simulation matrix (from run_sim)
+    #     Outputs: (T-1) vector of speeds
+    #     """
+    #     N = sim.shape[1]
+    #     com = np.dot(sim , np.array(range(N))) / N
+    #     speeds = (((com - np.roll(com, 1))[1:] + .5) % 1 - .5)
+    #     return speeds * N
 
 class BoundaryProcess(AsymmetricProcess):
     """
@@ -312,12 +333,12 @@ class BoundaryProcess(AsymmetricProcess):
         transitions = {}
 
         #rightmost particle leaves system
-        if state.empty_rightmost == False:
-            transitions[str(state.exit_from_right)] = self.b / (self.N + 1)
+        if state.empty_rightmost() == False:
+            transitions[str(state.exit_from_right())] = self.b / (self.N + 1)
 
         #particle enters system if there is space on the left
-        if state.empty_leftmost == True:
-            transitions[str(state.enter_from_left)] = self.a / (self.N + 1)
+        if state.empty_leftmost() == True:
+            transitions[str(state.enter_from_left())] = self.a / (self.N + 1)
 
         #transitions where a particle moves right that is not the rightmost particle
         for new in open_r:
@@ -334,6 +355,7 @@ class BoundaryProcess(AsymmetricProcess):
         transitions[str(state)] = 1. - (1. + self.q) / self.N * len(open_r)
         
         return transitions
+
 
     def state_index(self, state_str):
         """
@@ -361,6 +383,29 @@ class BoundaryProcess(AsymmetricProcess):
             s = bin(i)[2:]
             results += ["0" * (N - len(s)) + s]
         return results
+
+    def speeds(self, state):
+        """
+        Given a state, returns dictionary of all transitions like
+        {str(new_state) : Speed of going from state to new_state (either +1, 0, -1), ...}
+        """
+        state = self.castToState(state)
+        open_r = state.open_spots_to_right()
+        open_l = state.open_spots_to_left()
+        speeds = dict()
+        for new in open_r:
+            speeds[str(state.move_right(new))] = 1.
+        if self.q > 0:
+            for new in open_l:
+                new_state = str(state.move_left(new))
+                speeds[new_state] = -1.
+        if state.empty_leftmost() == True and self.a > 0:
+            speeds[str(state.enter_from_left())] = 1.
+        if not state.empty_rightmost() and self.b > 0:
+            speeds[str(state.exit_from_right())] = 1.
+        speeds[str(state)] = 0
+        return speeds
+
 
         
 class State:
@@ -539,3 +584,6 @@ def ncr(n, r):
     numer = reduce(op.mul, xrange(n, n-r, -1))
     denom = reduce(op.mul, xrange(1, r+1))
     return numer//denom
+
+
+
