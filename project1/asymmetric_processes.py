@@ -1,4 +1,9 @@
+# -*- coding: utf-8 -*-
 """
+Created on Sat Feb 18 16:26:10 2017
+
+@author: steele94
+
 asymmetric_processes.py
 Description: contains classes for easily performing simulations and
 calculations about the behavior of asymmetric random processes for
@@ -299,7 +304,36 @@ class BoundaryProcess(AsymmetricProcess):
         Given a state, returns dictionary of all transitions like
         {str(new_state) : Pr[new_state @ t+1 | state @ t], ...}
         """
-        raise ValueError("You need to implement this!!!")
+        #raise ValueError("You need to implement this!!!")
+
+        state = self.castToState(state)
+        open_r = state.open_spots_to_right()
+        open_l = state.open_spots_to_left()
+        transitions = {}
+
+        #rightmost particle leaves system
+        if state.empty_rightmost == False:
+            transitions[str(state.exit_from_right)] = self.b / (self.N + 1)
+
+        #particle enters system if there is space on the left
+        if state.empty_leftmost == True:
+            transitions[str(state.enter_from_left)] = self.a / (self.N + 1)
+
+        #transitions where a particle moves right that is not the rightmost particle
+        for new in open_r:
+            transitions[str(state.move_right(new))] = 1. / (self.N + 1)
+
+        #transitions where a particle moves left that is not in the leftmost position
+        if self.q > 0:
+            for new in open_l:
+                new_state = str(state.move_left(new))
+                if new_state in transitions:
+                    transitions[new_state] += 1. * self.q / (self.N + 1)
+                else:
+                    transitions[new_state] = 1. * self.q / (self.N + 1)
+        transitions[str(state)] = 1. - (1. + self.q) / self.N * len(open_r)
+        
+        return transitions
 
     def state_index(self, state_str):
         """
@@ -320,6 +354,8 @@ class BoundaryProcess(AsymmetricProcess):
         Provides a list of all state strings
         This will be length 2^N
         """
+        if N is None:
+            N = self.N
         results = []
         for i in range(2**N):
             s = bin(i)[2:]
@@ -451,7 +487,7 @@ class State:
         being filled with 1
         """
         new_values = self.values.copy()
-        if new_values[0] < self.eps:
+        if new_values[0] > self.eps:
             raise ValueError("Cannot enter from left: %s" % new_values)
         new_values[0] = 1
         return State(new_values, self.cycle)
@@ -503,6 +539,3 @@ def ncr(n, r):
     numer = reduce(op.mul, xrange(n, n-r, -1))
     denom = reduce(op.mul, xrange(1, r+1))
     return numer//denom
-
-
-
