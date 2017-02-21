@@ -352,7 +352,8 @@ class BoundaryProcess(AsymmetricProcess):
                     transitions[new_state] += 1. * self.q / (self.N + 1)
                 else:
                     transitions[new_state] = 1. * self.q / (self.N + 1)
-        transitions[str(state)] = 1. - (1. + self.q) / self.N * len(open_r)
+
+        transitions[str(state)] = 1. - sum(transitions.values())
         
         return transitions
 
