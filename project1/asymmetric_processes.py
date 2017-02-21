@@ -288,9 +288,9 @@ class BoundaryProcess(AsymmetricProcess):
         b: exit-from-right parameter, 0 <= b <= 1
         """
         self.N = N
-        self.q = q
-        self.a = a
-        self.b = b
+        self.q = float(q)
+        self.a = float(a)
+        self.b = float(b)
 
     def random_state(self):
         """
@@ -406,6 +406,11 @@ class BoundaryProcess(AsymmetricProcess):
             speeds[str(state.exit_from_right())] = 1.
         speeds[str(state)] = 0
         return speeds
+
+    def castToState(self, state):
+        state = super(BoundaryProcess, self).castToState(state)
+        state.cycle = False
+        return state
 
 
         
