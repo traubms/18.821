@@ -1,5 +1,7 @@
 """
 asymmetric_processes.py
+Authors: mtraub, steele94
+
 Description: contains classes for easily performing simulations and
 calculations about the behavior of asymmetric random processes for
 18.821 Project #1. 
@@ -16,6 +18,7 @@ from scipy.ndimage.interpolation import shift
 import scipy.sparse as sparse
 import operator as op
 from abc import abstractmethod, ABCMeta
+import sympy
 
 class AsymmetricProcess(object):
     """
@@ -60,6 +63,13 @@ class AsymmetricProcess(object):
     def enum_states(self):
         """
         Provides a list of all state strings
+        """
+        pass
+
+    @abstractmethod
+    def is_symbolic(self):
+        """
+        Returns boolean if any parameters are symbolic
         """
         pass
 
@@ -111,8 +121,11 @@ class AsymmetricProcess(object):
         M = len(states)
         transitions_speeds = [(s, self.transitions(State(s)), self.speeds(State(s))) for s in states]
         S = np.zeros((self.N, M))
-        T = sparse.csr_matrix((M, M))
-        V = sparse.csr_matrix((M, M))
+        if self.is_symbolic():
+            pass # TODO: make symbolic matrices
+        else:
+            T = sparse.csr_matrix((M, M))
+            V = sparse.csr_matrix((M, M))
         
         k = 0
         for s, t, v in transitions_speeds:
@@ -262,17 +275,13 @@ class CircleProcess(AsymmetricProcess):
             self.memo[(N, k)] = results
             return results
 
-    # def speeds(self, sim):
-    #     """
-    #     Given a simulation, calculates if each at each step some particle
-    #     moved left (-1), right (+1) or no change (0)
-    #     Inputs: T x N simulation matrix (from run_sim)
-    #     Outputs: (T-1) vector of speeds
-    #     """
-    #     N = sim.shape[1]
-    #     com = np.dot(sim , np.array(range(N))) / N
-    #     speeds = (((com - np.roll(com, 1))[1:] + .5) % 1 - .5)
-    #     return speeds * N
+    def is_symbolic(self):
+        """
+        Returns boolean if any parameters are symbolic
+        """
+        # TODO: use type(q) in sympy.core.all_classes to see if some
+        # variable is symbolic
+        return False
 
 class BoundaryProcess(AsymmetricProcess):
     """
@@ -288,7 +297,7 @@ class BoundaryProcess(AsymmetricProcess):
         b: exit-from-right parameter, 0 <= b <= 1
         """
         self.N = N
-        self.q = float(q)
+        self.q = q
         self.a = float(a)
         self.b = float(b)
 
@@ -345,13 +354,12 @@ class BoundaryProcess(AsymmetricProcess):
             transitions[str(state.move_right(new))] = 1. / (self.N + 1)
 
         #transitions where a particle moves left that is not in the leftmost position
-        if self.q > 0:
-            for new in open_l:
-                new_state = str(state.move_left(new))
-                if new_state in transitions:
-                    transitions[new_state] += 1. * self.q / (self.N + 1)
-                else:
-                    transitions[new_state] = 1. * self.q / (self.N + 1)
+        for new in open_l:
+            new_state = str(state.move_left(new))
+            if new_state in transitions:
+                transitions[new_state] += 1. * self.q / (self.N + 1)
+            else:
+                transitions[new_state] = 1. * self.q / (self.N + 1)
 
         transitions[str(state)] = 1. - sum(transitions.values())
         
@@ -396,10 +404,9 @@ class BoundaryProcess(AsymmetricProcess):
         speeds = dict()
         for new in open_r:
             speeds[str(state.move_right(new))] = 1.
-        if self.q > 0:
-            for new in open_l:
-                new_state = str(state.move_left(new))
-                speeds[new_state] = -1.
+        for new in open_l:
+            new_state = str(state.move_left(new))
+            speeds[new_state] = -1.
         if state.empty_leftmost() == True and self.a > 0:
             speeds[str(state.enter_from_left())] = 1.
         if not state.empty_rightmost() and self.b > 0:
@@ -412,7 +419,13 @@ class BoundaryProcess(AsymmetricProcess):
         state.cycle = False
         return state
 
-
+    def is_symbolic(self):
+        """
+        Returns boolean if any parameters are symbolic
+        """
+        # TODO: use type(q) in sympy.core.all_classes to see if some
+        # variable is symbolic
+        return False
         
 class State:
     """
