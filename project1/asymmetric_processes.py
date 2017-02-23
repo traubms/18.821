@@ -598,6 +598,8 @@ def ncr(n, r):
     """
     Returns "n choose r"
     """
+    if r < 0 or r > n:
+        return 0
     r = min(r, n-r)
     if r == 0: return 1
     numer = reduce(op.mul, xrange(n, n-r, -1))
