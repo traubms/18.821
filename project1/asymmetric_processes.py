@@ -282,9 +282,7 @@ class CircleProcess(AsymmetricProcess):
         """
         # TODO: use type(q) in sympy.core.all_classes to see if some
         # variable is symbolic
-        if type(self.q) != float:
-            return True
-        return False
+        return type(self.q) in sympy.core.all_classes
 
 #q,a,b NEED to be floats if we want something not symbolic
 class BoundaryProcess(AsymmetricProcess):
@@ -410,39 +408,21 @@ class BoundaryProcess(AsymmetricProcess):
         {str(new_state) : Speed of going from state to new_state (either +1, 0, -1), ...}
         """
         
-        if self.is_symbolic() == True:
-            state = self.castToState(state)
-            open_r = state.open_spots_to_right()
-            open_l = state.open_spots_to_left()
-            speeds = dict()
-            for new in open_r:
-                speeds[str(state.move_right(new))] = 1.
-            for new in open_l:
-                new_state = str(state.move_left(new))
-                speeds[new_state] = -1.
-            if state.empty_leftmost() == True:
-                speeds[str(state.enter_from_left())] = 1.
-            if not state.empty_rightmost():
-                speeds[str(state.exit_from_right())] = 1.
-            speeds[str(state)] = 0
-            return speeds
-        
-        else:
-            state = self.castToState(state)
-            open_r = state.open_spots_to_right()
-            open_l = state.open_spots_to_left()
-            speeds = dict()
-            for new in open_r:
-                speeds[str(state.move_right(new))] = 1.
-            for new in open_l:
-                new_state = str(state.move_left(new))
-                speeds[new_state] = -1.
-            if state.empty_leftmost() == True and self.a > 0:
-                speeds[str(state.enter_from_left())] = 1.
-            if not state.empty_rightmost() and self.b > 0:
-                speeds[str(state.exit_from_right())] = 1.
-            speeds[str(state)] = 0
-            return speeds
+        state = self.castToState(state)
+        open_r = state.open_spots_to_right()
+        open_l = state.open_spots_to_left()
+        speeds = dict()
+        for new in open_r:
+            speeds[str(state.move_right(new))] = 1.
+        for new in open_l:
+            new_state = str(state.move_left(new))
+            speeds[new_state] = -1.
+        if state.empty_leftmost() == True:
+            speeds[str(state.enter_from_left())] = 1.
+        if not state.empty_rightmost():
+            speeds[str(state.exit_from_right())] = 1.
+        speeds[str(state)] = 0
+        return speeds
         
     def castToState(self, state):
         state = super(BoundaryProcess, self).castToState(state)
@@ -456,11 +436,10 @@ class BoundaryProcess(AsymmetricProcess):
         """
         # TODO: use type(q) in sympy.core.all_classes to see if some
         # variable is symbolic
-        if type(self.q) != float:
-            if type(self.a) != float:
-                if type(self.b) != float:
-                    return True
-        return False
+        return type(self.q) in sympy.core.all_classes \
+            or type(self.a) in sympy.core.all_classes \
+            or type(self.b) in sympy.core.all_classes
+
            
 class State:
     """
