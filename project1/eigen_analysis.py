@@ -27,25 +27,34 @@ if PERIODIC: # Periodic
 else: # Boundary
 
     # New Boundary object
-    N = 8
+    N = 4
     q = 0.
-    a = .6
-    b = .6
+    a = .5
+    b = 1.
     p = BoundaryProcess(N, q, a, b)
+
+
 
     S, T, V = p.matrices()
     l, v = np.linalg.eig(T.todense())
     i_eq = np.argmax(np.abs(l))
     M = T.shape[0]
 
+    print p.enum_states()
+    print S
+    print 
+    print T.todense()
+
     proj_eig_v = pd.DataFrame(np.real(S.dot(v)))
     proj_eig_v = proj_eig_v / proj_eig_v.sum()
 
     plt.figure()
-    proj_eig_v[i_eq].plot.bar()
+    proj_eig_v[i_eq].plot()
     plt.xlabel("Position in Length %s Bitstring" % N)
     plt.title("Expected Number of Particles at Each Position in Steady State")
     plt.show()
+
+
 
 
 

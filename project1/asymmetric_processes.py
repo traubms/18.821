@@ -1,7 +1,7 @@
+# -*- coding: utf-8 -*-
 """
 asymmetric_processes.py
 Authors: mtraub, steele94
-
 Description: contains classes for easily performing simulations and
 calculations about the behavior of asymmetric random processes for
 18.821 Project #1. 
@@ -121,8 +121,9 @@ class AsymmetricProcess(object):
         M = len(states)
         transitions_speeds = [(s, self.transitions(State(s)), self.speeds(State(s))) for s in states]
         S = np.zeros((self.N, M))
-        if self.is_symbolic():
-            pass # TODO: make symbolic matrices
+        if self.is_symbolic() == True:         
+            T = sympy.zeros(M,M)
+            V = sympy.zeros(M,M)
         else:
             T = sparse.csr_matrix((M, M))
             V = sparse.csr_matrix((M, M))
@@ -138,6 +139,7 @@ class AsymmetricProcess(object):
                     V[j, i] = v[r]
                 k += 1
         V = T.multiply(V) # speed weighted by probabilities
+    
         return S, T, V
 
     def castToState(self, state):
@@ -159,12 +161,14 @@ class CircleProcess(AsymmetricProcess):
     conditions and fixed number of particles
     """
 
-    def __init__(self, N, k, q):
+    def __init__(self, N, k, q=None):
         """
         N: number of positions
         k: number of particles
         q: asymmetry parameter; 0 <= q <= 1
         """
+        if q is None:
+            q = sympy.Symbol('q')
         self.N = N
         self.k = k
         self.q = q
@@ -204,13 +208,12 @@ class CircleProcess(AsymmetricProcess):
         transitions = dict()
         for new in open_r:
             transitions[str(state.move_right(new))] = 1. / self.N
-        if self.q > 0:
-            for new in open_l:
-                new_state = str(state.move_left(new))
-                if new_state in transitions:
-                    transitions[new_state] += 1. * self.q / self.N
-                else:
-                    transitions[new_state] = 1. * self.q / self.N
+        for new in open_l:
+            new_state = str(state.move_left(new))
+            if new_state in transitions:
+                transitions[new_state] += 1. * self.q / self.N
+            else:
+                transitions[new_state] = 1. * self.q / self.N
         transitions[str(state)] = 1. - (1. + self.q) / self.N * len(open_r)
         return transitions
 
@@ -225,13 +228,11 @@ class CircleProcess(AsymmetricProcess):
         speeds = dict()
         for new in open_r:
             speeds[str(state.move_right(new))] = 1.
-        if self.q > 0:
-            for new in open_l:
-                new_state = str(state.move_left(new))
-                speeds[new_state] = -1.
+        for new in open_l:
+            new_state = str(state.move_left(new))
+            speeds[new_state] = -1.
         speeds[str(state)] = 0
         return speeds
-
 
     def state_index(self, state_str):
         """
@@ -281,26 +282,35 @@ class CircleProcess(AsymmetricProcess):
         """
         # TODO: use type(q) in sympy.core.all_classes to see if some
         # variable is symbolic
+        if type(self.q) != float:
+            return True
         return False
 
+#q,a,b NEED to be floats if we want something not symbolic
 class BoundaryProcess(AsymmetricProcess):
     """
     Defines asymmetric Boundary process where particles
     enter from left and leave on right
     """
 
-    def __init__(self, N, q, a, b):
+    def __init__(self, N, q=None, a=None, b=None):
         """
         N: number of positions
         q: asymmetry parameter, 0 <= q <= 1
         a: enter-from-left parameter, 0 <= a <= 1
         b: exit-from-right parameter, 0 <= b <= 1
         """
+        if q is None:
+            q = sympy.Symbol('q')
+        if a is None:
+            a = sympy.Symbol('a')
+        if b is None:
+            b = sympy.Symbol('b')
         self.N = N
         self.q = q
-        self.a = float(a)
-        self.b = float(b)
-
+        self.a = a
+        self.b = b
+    
     def random_state(self):
         """
         Turns each position on with probability 1/2
@@ -335,7 +345,8 @@ class BoundaryProcess(AsymmetricProcess):
         {str(new_state) : Pr[new_state @ t+1 | state @ t], ...}
         """
         #raise ValueError("You need to implement this!!!")
-
+        
+        
         state = self.castToState(state)
         open_r = state.open_spots_to_right()
         open_l = state.open_spots_to_left()
@@ -398,22 +409,41 @@ class BoundaryProcess(AsymmetricProcess):
         Given a state, returns dictionary of all transitions like
         {str(new_state) : Speed of going from state to new_state (either +1, 0, -1), ...}
         """
-        state = self.castToState(state)
-        open_r = state.open_spots_to_right()
-        open_l = state.open_spots_to_left()
-        speeds = dict()
-        for new in open_r:
-            speeds[str(state.move_right(new))] = 1.
-        for new in open_l:
-            new_state = str(state.move_left(new))
-            speeds[new_state] = -1.
-        if state.empty_leftmost() == True and self.a > 0:
-            speeds[str(state.enter_from_left())] = 1.
-        if not state.empty_rightmost() and self.b > 0:
-            speeds[str(state.exit_from_right())] = 1.
-        speeds[str(state)] = 0
-        return speeds
-
+        
+        if self.is_symbolic() == True:
+            state = self.castToState(state)
+            open_r = state.open_spots_to_right()
+            open_l = state.open_spots_to_left()
+            speeds = dict()
+            for new in open_r:
+                speeds[str(state.move_right(new))] = 1.
+            for new in open_l:
+                new_state = str(state.move_left(new))
+                speeds[new_state] = -1.
+            if state.empty_leftmost() == True:
+                speeds[str(state.enter_from_left())] = 1.
+            if not state.empty_rightmost():
+                speeds[str(state.exit_from_right())] = 1.
+            speeds[str(state)] = 0
+            return speeds
+        
+        else:
+            state = self.castToState(state)
+            open_r = state.open_spots_to_right()
+            open_l = state.open_spots_to_left()
+            speeds = dict()
+            for new in open_r:
+                speeds[str(state.move_right(new))] = 1.
+            for new in open_l:
+                new_state = str(state.move_left(new))
+                speeds[new_state] = -1.
+            if state.empty_leftmost() == True and self.a > 0:
+                speeds[str(state.enter_from_left())] = 1.
+            if not state.empty_rightmost() and self.b > 0:
+                speeds[str(state.exit_from_right())] = 1.
+            speeds[str(state)] = 0
+            return speeds
+        
     def castToState(self, state):
         state = super(BoundaryProcess, self).castToState(state)
         state.cycle = False
@@ -422,11 +452,16 @@ class BoundaryProcess(AsymmetricProcess):
     def is_symbolic(self):
         """
         Returns boolean if any parameters are symbolic
+        ??Returns symbolic matrix
         """
         # TODO: use type(q) in sympy.core.all_classes to see if some
         # variable is symbolic
+        if type(self.q) != float:
+            if type(self.a) != float:
+                if type(self.b) != float:
+                    return True
         return False
-        
+           
 class State:
     """
     Stores a state and provides helper functions for transitioning the state
@@ -605,6 +640,3 @@ def ncr(n, r):
     numer = reduce(op.mul, xrange(n, n-r, -1))
     denom = reduce(op.mul, xrange(1, r+1))
     return numer//denom
-
-
-
