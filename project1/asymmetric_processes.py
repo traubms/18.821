@@ -122,8 +122,8 @@ class AsymmetricProcess(object):
         transitions_speeds = [(s, self.transitions(State(s)), self.speeds(State(s))) for s in states]
         S = np.zeros((self.N, M))
         if self.is_symbolic() == True:         
-            T = sympy.zeros(M,M)
-            V = sympy.zeros(M,M)
+            T = sympy.SparseMatrix(M, M, 0)
+            V = sympy.SparseMatrix(M, M, 0)
         else:
             T = sparse.csr_matrix((M, M))
             V = sparse.csr_matrix((M, M))
