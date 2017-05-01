@@ -18,15 +18,15 @@ class CircleList(list):
 class Point(object):
 
     def __init__(self, x, y, before=None, after=None):
-        self.x = x
-        self.y = y
+        self.x = 1. * x
+        self.y = 1. * y
         self.before = None
         self.after = None
 
     def flip(self):
         # rl = self.before - self.after
         # rm = self.before - self
-        # if rl * rm < 1e-14:
+        # if abs(rl * rm) < 1e-14:
         #     dx = -1 * rm
         # else:
         #     dx = (rl * rm) / (rl * rl) * rl - rm
