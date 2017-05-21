@@ -49,6 +49,37 @@ class Point(object):
     def rotate_90(self):
         return Point(self.y, -self.x)
 
+    def dot(self, C):
+        return self.x * C.x + self.y * C.y
+
+    def cross(self, C):
+        return self.dot(C.rotate_90())
+
+    def norm(self):
+        return math.sqrt(self.norm_sq())
+
+    def norm_sq(self):
+        return self.x**2 + self.y**2
+
+    def circumcenter(self):
+        p1 = self.before
+        p2 = self
+        p3 = self.after
+
+        r = abs(p1 - p2) * abs(p2 - p3) * abs(p3 - p1) / (2 * (p1 - p2).cross(p2 - p3))
+
+        denom = 2 * (p1 - p2).cross(p2 - p3)**2
+        alpha = (p2 - p3).norm_sq() * (p1 - p2).dot(p1 - p3) / denom
+        beta = (p1 - p3).norm_sq() * (p2 - p1).dot(p2 - p3) / denom
+        gamma = (p1 - p2).norm_sq() * (p3 - p1).dot(p3 - p2) / denom
+
+        center = alpha * p1 + beta * p2 + gamma * p3
+
+        return (center, r)
+
+    def __abs__(self):
+        return self.norm()
+
     def __add__(self, other):
         return Point(self.x + other.x, self.y + other.y)
 
@@ -57,7 +88,7 @@ class Point(object):
 
     def __mul__(self, C):
         if isinstance(C, Point):
-            return self.x * C.x + self.y * C.y
+            return self.dot(C)
         else:
             return Point(self.x * C, self.y * C)
 
@@ -105,7 +136,10 @@ class Polygon(object):
         edge_angles = []
         for i in range(self.N):
             edge = self.points[i] - self.points[(i-1) % self.N]
-            edge_angle = math.atan(edge.y / edge.x) 
+            if edge.x == 0:
+                edge_angle = math.pi / 2.
+            else:
+                edge_angle = math.atan(edge.y / edge.x) 
             if edge.x < 0:
                 edge_angle += math.pi
             edge_angles += [edge_angle]
@@ -138,11 +172,20 @@ class RegularPolygon(Polygon):
 
 class RandomPolygon(Polygon):
 
-    def __init__(self, N, r=1., convex=True):
-        angles = sorted(np.random.random(N) * np.pi * 2)
+    def __init__(self, N, r=1., convex=True, ordered=True):
+        angles = np.random.random(N) * np.pi * 2
+        if ordered:
+            angles = sorted(angles)
         rs = np.sqrt(np.random.random(N)) * r
         points = [(rs[i] * math.cos(angles[i]), rs[i] * math.sin(angles[i])) for i in range(N)]
         super(RandomPolygon, self).__init__(points)
+
+class RandomFlatShape(Polygon):
+
+    def __init__(self, N, L=1., convex=True):
+        rs = np.random.random(N) * L
+        points = [(r, 0) for r in rs]
+        super(RandomFlatShape, self).__init__(points)
 
 class PolygonProcess(object):
 
